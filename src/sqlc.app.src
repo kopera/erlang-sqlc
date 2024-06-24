@@ -1,0 +1,16 @@
+{application, sqlc, [
+    {description, "SQL compiler for Erlang"},
+    {vsn, git},
+    {applications, [
+        kernel,
+        stdlib,
+
+        syntax_tools,
+        parsetools
+    ]},
+    {env,[]},
+    {modules, []},
+
+    {licenses, ["Apache 2.0"]},
+    {links, []}
+ ]}.
