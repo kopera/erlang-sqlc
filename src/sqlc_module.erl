@@ -74,19 +74,19 @@ add_request({RequestType, RequestName, #{parameters := RequestParameters, statem
     Parameters = [begin
         {ParameterName, #{
             key => erl_syntax:tuple([erl_syntax:atom(ModuleName), erl_syntax:atom(RequestName), erl_syntax:atom(ParameterName)]),
-            type => ParameterType,
-            variable => erl_syntax:variable(pascal_case(atom_to_list(ParameterName))),
-            cast => case ParameterType of
-                {array, ParameterSubType} -> erl_syntax:string(atom_to_list(ParameterSubType) ++ "[]");
-                ParameterType -> erl_syntax:string(atom_to_list(ParameterType))
-            end
+            type => merl:term(ParameterType),
+            variable => erl_syntax:variable(pascal_case(atom_to_list(ParameterName)))
+            % cast => case ParameterType of
+            %     {array, ParameterSubType} -> erl_syntax:string(atom_to_list(ParameterSubType) ++ "[]");
+            %     ParameterType -> erl_syntax:string(atom_to_list(ParameterType))
+            % end
         }}
     end || {ParameterName, ParameterType} <- RequestParameters],
     ParametersExpr = gen_request_parameters_expr(Parameters),
     StatementExpr = gen_request_statement_expr(Parameters, RequestStatement),
     Clause = ?Q([
         "(_@ParametersExpr) ->",
-        "   #{type => '@RequestType@', statement => _@StatementExpr}"
+        "   #{name => {'@ModuleName@', '@RequestName@'}, type => '@RequestType@', statement => _@StatementExpr}"
     ]),
     add_exported_function(RequestName, lists:flatten([Clause]), Codegen).
 
@@ -95,10 +95,10 @@ add_request({RequestType, RequestName, #{parameters := RequestParameters, statem
 -spec gen_request_parameters_expr(Parameters) -> erl_syntax:syntaxTree() when
     Parameters :: [{atom(), parameter_info()}].
 -type parameter_info() :: #{
-    type := parameter_type(),
+    type := erl_syntax:syntaxTree(),
     key := erl_syntax:syntaxTree(),
-    variable := erl_syntax:syntaxTree(),
-    cast := erl_syntax:syntaxTree()
+    variable := erl_syntax:syntaxTree()
+    % cast := erl_syntax:syntaxTree()
 }.
 gen_request_parameters_expr(Parameters) ->
     erl_syntax:map_expr([begin
@@ -111,29 +111,29 @@ gen_request_parameters_expr(Parameters) ->
 gen_request_statement_expr(ParametersList, RequestStatement) ->
     Parameters = maps:from_list(ParametersList),
     %% eqwalizer:ignore
-    erl_syntax:list(lists:flatmap(fun
-        (Fragment) when is_binary(Fragment) ->
-            [
-                %% eqwalizer:ignore
-                erl_syntax:binary([erl_syntax:binary_field(erl_syntax:string(unicode:characters_to_list(Fragment)))])
-            ];
-        ({parameter, ParameterName}) ->
+    erl_syntax:list([case Node of
+        Fragment when is_binary(Fragment) ->
+            %% eqwalizer:ignore
+            erl_syntax:binary([erl_syntax:binary_field(erl_syntax:string(unicode:characters_to_list(Fragment)))]);
+        {parameter, ParameterName} ->
             #{ParameterName := #{
                 key := ParameterKey,
                 variable := ParameterVariable,
-                cast := ParameterCast
+                type := ParameterType
+                % cast := ParameterCast
             }} = Parameters,
-            [
-                ?Q("<<\"(\">>"),
-                ?Q("{parameter, #{key => _@ParameterKey, value => _@ParameterVariable}}"),
-                ?Q("<<\"::\", _@ParameterCast>>"),
-                % erl_syntax:binary([
-                %     erl_syntax:binary_field(erl_syntax:string("::")),
-                %     erl_syntax:binary_field(ParameterCast)
-                % ]),
-                ?Q("<<\")\">>")
-            ]
-    end, RequestStatement)).
+            ?Q("{parameter, #{key => _@ParameterKey, value => _@ParameterVariable, type => _@ParameterType}}")
+            % [
+            %     ?Q("<<\"(\">>"),
+            %     ?Q("{parameter, #{key => _@ParameterKey, value => _@ParameterVariable}}"),
+            %     ?Q("<<\"::\", _@ParameterCast>>"),
+            %     erl_syntax:binary([
+            %         erl_syntax:binary_field(erl_syntax:string("::")),
+            %         erl_syntax:binary_field(ParameterCast)
+            %     ]),
+            %     ?Q("<<\")\">>")
+            % ]
+    end || Node <- RequestStatement]).
 
 
 %% @private
