@@ -146,6 +146,8 @@ scan_statement_line(Indent, [$\r, $\n | Rest], Acc, State) ->
     scan_statement_line_start(Indent, Rest, [$\r, $\n | Acc], line_inc(State), fun scan_statement_line/4);
 scan_statement_line(Indent, [$\n | Rest], Acc, State) ->
     scan_statement_line_start(Indent, Rest, [$\n | Acc], line_inc(State), fun scan_statement_line/4);
+scan_statement_line(Indent, [$-, $- | Rest], Acc, State) ->
+    scan_statement_line_comment(Indent, Rest, [$-, $- | Acc], columns_inc(2, State));
 scan_statement_line(_Indent, [$; | Rest], Acc, State) ->
     Symbol = lists:reverse(Acc),
     scan(Rest, token_end(';', ";", token_start(token_end(fragment, Symbol, column_inc(State)))));
@@ -164,7 +166,18 @@ scan_statement_line(_Indent, [], _Acc, #state{token_start = Start} = State) ->
     {error, make_error({incomplete_statement, Start}, State)}.
 
 
-% %% @private
+%% @private
+scan_statement_line_comment(Indent, [$\r, $\n | Rest], Acc, State) ->
+    scan_statement_line(Indent, Rest, [$\r, $\n | Acc], line_inc(State));
+scan_statement_line_comment(Indent, [$\n | Rest], Acc, State) ->
+    scan_statement_line(Indent, Rest, [$\n | Acc], line_inc(State));
+scan_statement_line_comment(Indent, [C | Rest], Acc, State) ->
+    scan_statement_line_comment(Indent, Rest, [C | Acc], column_inc(State));
+scan_statement_line_comment(Indent, [], Acc, State) ->
+    scan_statement_line(Indent, [], Acc, column_inc(State)).
+
+
+%% @private
 scan_statement_quoted(Indent, Q, [$\r, $\n | Rest], Acc, State) ->
     scan_statement_line_start(Indent, Rest, [$\r, $\n | Acc], line_inc(State), fun (_Indent, Rest1, Acc1, State1) ->
         scan_statement_quoted(Indent, Q, Rest1, Acc1, State1)
@@ -235,3 +248,35 @@ column_inc(State) ->
 %% @private
 columns_inc(Add, State = #state{column = Column}) when is_integer(Add), Add > 0 ->
     State#state{column = Column + Add}.
+
+
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+
+test_data() ->
+    "
+        query test() returns user as
+            -- ignored
+            -- ignore quoted '
+            -- ignore quoted \"
+            -- ignore parameter :test
+            select true;
+    ".
+
+string_test_() ->
+    [
+        ?_assertMatch({ok, [
+            {query, _, "query"},
+            {identifier, _,"test"},
+            {'(', _,"("},
+            {')', _,")"},
+            {returns, _,"returns"},
+            {identifier, _,"user"},
+            {as, _,"as"},
+            {fragment, _, "-- ignored\n            -- ignore quoted '\n            -- ignore quoted \"\n            -- ignore parameter :test\n            select true"},
+            {';', _,";"}
+        ]}, string(test_data()))
+    ].
+
+
+-endif.
