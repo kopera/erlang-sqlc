@@ -8,12 +8,13 @@ Nonterminals
     request_param
     request_result
     request_statement
+    identifier_chain
     type.
 
 Terminals
     '(' ')'
     '[' ']'
-    ',' ';'
+    ',' ';' '.'
     query
     mutation
     returns
@@ -77,8 +78,11 @@ request_statement -> parameter                      : [{parameter, as_atom('$1')
 
 % Common -----------------------------------------------------------------------
 
-type -> identifier '[' ']'                          : {array, as_atom('$1')}.
-type -> identifier                                  : as_atom('$1').
+type -> identifier_chain '[' ']'                    : <<('$1')/binary, "[]">>.
+type -> identifier_chain                            : '$1'.
+
+identifier_chain -> identifier                      : as_binary_string('$1').
+identifier_chain -> identifier '.' identifier_chain : <<(as_binary_string('$1'))/binary, ".", ('$3')/binary>>.
 
 Erlang code.
 

@@ -26,7 +26,7 @@
 -spec string(string()) -> {ok, [token()]} | {error, error_info()}.
 -type token() :: {token_category(), location(), string()}.
 -type token_category() ::
-    '(' | ')' | '[' | ']' | '?' | ':' | ';' | query | mutation | returns | as | identifier | parameter | fragment.
+    '(' | ')' | '[' | ']' | '?' | ':' | ';' | '.' | query | mutation | returns | as | identifier | parameter | fragment.
 -type location() :: {Line :: pos_integer(), Column :: pos_integer()}.
 -type error() :: {location(), sqlc_scanner, error_info()}.
 -type error_info() ::
@@ -103,6 +103,9 @@ scan_parameter(Rest, Acc, State, Cont) ->
     Result :: {ok, [token()]} | {error, error()}.
 scan_identifier([C | Rest], Acc, State) when ?is_identifier_cont(C) ->
     scan_identifier(Rest, [C | Acc], column_inc(State));
+scan_identifier([$. | Rest], Acc, State) ->
+    Symbol = lists:reverse(Acc),
+    scan_identifier(Rest, [], token_end('.', ".", column_inc(token_end(identifier, Symbol, State))));
 scan_identifier(Rest, Acc, State) ->
     case lists:reverse(Acc) of
         "query" = Symbol -> scan(Rest, token_end(query, Symbol, State));

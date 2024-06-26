@@ -49,7 +49,7 @@ new(ModuleName) when is_atom(ModuleName) ->
 
 %% @private
 -spec add_requests([Request], Codegen) -> Codegen when
-    Request :: request(),
+    Request :: sqlc_definitions:request(),
     Codegen :: #codegen{}.
 add_requests([], Codegen) ->
     Codegen;
@@ -59,27 +59,14 @@ add_requests([Request | Requests], Codegen) ->
 
 %% @private
 -spec add_request(Request, Codegen) -> Codegen when
-    Request :: request(),
+    Request :: sqlc_definitions:request(),
     Codegen :: #codegen{}.
--type request() :: {query | mutation, request_name(), request_info()}.
--type request_name() :: atom().
--type request_info() :: #{
-    return => return_type(),
-    parameters := [{atom(), parameter_type()}],
-    statement := [unicode:unicode_binary() | {parameter, atom()}]
-}.
--type return_type() :: {array, atom()} | atom().
--type parameter_type() :: {array, atom()} | atom().
 add_request({RequestType, RequestName, #{parameters := RequestParameters, statement := RequestStatement}}, #codegen{module = ModuleName} = Codegen) ->
     Parameters = [begin
         {ParameterName, #{
             key => erl_syntax:tuple([erl_syntax:atom(ModuleName), erl_syntax:atom(RequestName), erl_syntax:atom(ParameterName)]),
-            type => merl:term(ParameterType),
+            type => erl_syntax:binary([erl_syntax:binary_field(erl_syntax:string(characters_to_list(ParameterType)))]),
             variable => erl_syntax:variable(pascal_case(atom_to_list(ParameterName)))
-            % cast => case ParameterType of
-            %     {array, ParameterSubType} -> erl_syntax:string(atom_to_list(ParameterSubType) ++ "[]");
-            %     ParameterType -> erl_syntax:string(atom_to_list(ParameterType))
-            % end
         }}
     end || {ParameterName, ParameterType} <- RequestParameters],
     ParametersExpr = gen_request_parameters_expr(Parameters),
@@ -113,26 +100,14 @@ gen_request_statement_expr(ParametersList, RequestStatement) ->
     %% eqwalizer:ignore
     erl_syntax:list([case Node of
         Fragment when is_binary(Fragment) ->
-            %% eqwalizer:ignore
-            erl_syntax:binary([erl_syntax:binary_field(erl_syntax:string(unicode:characters_to_list(Fragment)))]);
+            erl_syntax:binary([erl_syntax:binary_field(erl_syntax:string(characters_to_list(Fragment)))]);
         {parameter, ParameterName} ->
             #{ParameterName := #{
                 key := ParameterKey,
                 variable := ParameterVariable,
                 type := ParameterType
-                % cast := ParameterCast
             }} = Parameters,
             ?Q("{parameter, #{key => _@ParameterKey, value => _@ParameterVariable, type => _@ParameterType}}")
-            % [
-            %     ?Q("<<\"(\">>"),
-            %     ?Q("{parameter, #{key => _@ParameterKey, value => _@ParameterVariable}}"),
-            %     ?Q("<<\"::\", _@ParameterCast>>"),
-            %     erl_syntax:binary([
-            %         erl_syntax:binary_field(erl_syntax:string("::")),
-            %         erl_syntax:binary_field(ParameterCast)
-            %     ]),
-            %     ?Q("<<\")\">>")
-            % ]
     end || Node <- RequestStatement]).
 
 
@@ -205,6 +180,25 @@ to_forms(#codegen{module = ModuleName} = Codegen) ->
         "-module('@ModuleName@').",
         "-export(['@_Exports'/1]).",
         "",
+        % "-type request() :: #{name := term(), type := request_type(), statement := request_statement()}.",
+        % "-type request_type() :: query | mutation.",
+        % "-type request_statement() :: [request_statement_fragment() | request_statement_parameter()].",
+        % "-type request_statement_fragment() :: unicode:unicode_binary().",
+        % "-type request_statement_parameter() :: {parameter, #{key := term(), value => term(), type => atom() | {array, atom()}}}.",
+        % "",
         "'@_Functions'() -> [].",
         ""
     ]))).
+
+
+%% @private
+-spec characters_to_list(unicode:chardata()) -> string().
+characters_to_list(Input) ->
+    case unicode:characters_to_list(Input) of
+        {error, _, _} ->
+            erlang:error(badarg, [Input]);
+        {incomplete, _, _} ->
+            erlang:error(badarg, [Input]);
+        String ->
+            String
+    end.

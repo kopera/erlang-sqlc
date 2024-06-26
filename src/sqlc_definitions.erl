@@ -4,7 +4,8 @@
     from_string/1
 ]).
 -export_type([
-    t/0
+    t/0,
+    request/0
 ]).
 
 -type t() :: [request()].
@@ -15,8 +16,8 @@
     parameters := [{atom(), parameter_type()}],
     statement := [unicode:unicode_binary() | {parameter, atom()}]
 }.
--type return_type() :: {array, atom()} | atom().
--type parameter_type() :: {array, atom()} | atom().
+-type return_type() :: unicode:unicode_binary().
+-type parameter_type() :: unicode:unicode_binary().
 
 
 -spec from_string(unicode:chardata()) -> {ok, t()} | {error, sqlc_error:t()}.
