@@ -115,7 +115,7 @@ gen_request_statement_expr(ParametersList, RequestStatement) ->
 -spec pascal_case(string()) -> string().
 pascal_case(String) ->
     %% eqwalizer:ignore
-    lists:flatten(lists:join("", [string:titlecase(Word) || Word <- string:split(String, "_")])).
+    lists:flatten(lists:join("", [string:titlecase(Word) || Word <- string:split(String, "_", all)])).
 
 
 %% @private
