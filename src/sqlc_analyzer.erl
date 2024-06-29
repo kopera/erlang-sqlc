@@ -21,10 +21,10 @@ format_error({duplicate_request, RequestName}) ->
     io_lib:format("duplicate request `~s`", [RequestName]);
 format_error({duplicate_parameter, RequestName, Name}) ->
     io_lib:format("duplicate parameter `~s` in request `~s`", [Name, RequestName]);
-format_error({missing_parameters, Missing}) ->
-    io_lib:format("unknown parameters `~p` used in request definition", [Missing]);
-format_error({unused_parameters, Unused}) ->
-    io_lib:format("unused parameters `~p`", [Unused]).
+format_error({missing_parameters, RequestName, Missing}) ->
+    io_lib:format("unknown parameters `~p` used in request ~s", [Missing, RequestName]);
+format_error({unused_parameters, RequestName,  Unused}) ->
+    io_lib:format("unused parameters `~p` in request ~s", [Unused, RequestName]).
 
 
 check_duplicate_requests([{_, RequestName, _} | Requests], Seen) ->
