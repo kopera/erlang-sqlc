@@ -1,6 +1,6 @@
 {application, sqlc, [
     {description, "SQL compiler for Erlang"},
-    {vsn, "0.1.0"},
+    {vsn, git},
     {applications, [
         kernel,
         stdlib,
