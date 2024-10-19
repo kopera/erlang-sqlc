@@ -28,6 +28,9 @@ jobs:
           otp-version: ${{ matrix.otp }}
           rebar3-version: ${{ matrix.rebar3 }}
 
+      - name: Check out
+        uses: actions/checkout@v3
+
       - name: Compile
         run: rebar3 compile
 
