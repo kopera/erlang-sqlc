@@ -1,6 +1,6 @@
 {application, sqlc, [
     {description, "SQL compiler for Erlang"},
-    {vsn, git},
+    {vsn, "0.1.0"},
     {applications, [
         kernel,
         stdlib,
@@ -11,6 +11,8 @@
     {env,[]},
     {modules, []},
 
-    {licenses, ["Apache 2.0"]},
-    {links, []}
+    {licenses, ["Apache-2.0"]},
+    {links, [
+        {"GitHub", "https://github.com/kopera/erlang-sqlc"}
+    ]}
  ]}.

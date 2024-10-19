@@ -9,13 +9,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Check out
-        uses: actions/checkout@v3
+      - uses: erlef/setup-beam@v1
+        with:
+          otp-version: "27.1"
+          rebar3-version: "3.24.0"
 
       - name: Setup rebar3 hex
         run: |
           mkdir -p ~/.config/rebar3/
           echo "{plugins, [rebar3_hex]}." >> ~/.config/rebar3/rebar.config
+
+      - name: Check out
+        uses: actions/checkout@v3
 
       - name: Publish to Hex.pm
         env:

@@ -15,11 +15,11 @@ jobs:
       matrix:
         include:
           - otp: "27.1"
-            rebar3: 3.24.0
+            rebar3: "3.24.0"
             os: ubuntu-latest
 
           - otp: "26.2.5"
-            rebar3: 3.24.0
+            rebar3: "3.24.0"
             os: ubuntu-latest
 
     steps:
