@@ -1,0 +1,24 @@
+name: Publish to Hex
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out
+        uses: actions/checkout@v3
+
+      - name: Setup rebar3 hex
+        run: |
+          mkdir -p ~/.config/rebar3/
+          echo "{plugins, [rebar3_hex]}." >> ~/.config/rebar3/rebar.config
+
+      - name: Publish to Hex.pm
+        env:
+          HEX_API_KEY: ${{ secrets.HEX_API_KEY }}
+        run: |
+          rebar3 hex publish --repo hexpm --yes
