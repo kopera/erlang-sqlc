@@ -1,0 +1,108 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to release, without the leading v (for example 0.2.0)
+        required: true
+        type: string
+      author-name:
+        description: Name of the author of the release commits
+        required: true
+        type: string
+      author-email:
+        description: Email of the author of the release commits
+        required: true
+        type: string
+
+concurrency: release
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    env:
+      VERSION: ${{ inputs.version }}
+      AUTHOR_NAME: ${{ inputs.author-name }}
+      AUTHOR_EMAIL: ${{ inputs.author-email }}
+
+    steps:
+      - name: Validate the inputs
+        run: |
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::'$VERSION' is not a valid version"
+            exit 1
+          fi
+          if [[ ! "$AUTHOR_EMAIL" =~ ^[^[:space:]@]+@[^[:space:]@]+$ ]]; then
+            echo "::error::'$AUTHOR_EMAIL' is not a valid email"
+            exit 1
+          fi
+
+      - name: Check out
+        uses: actions/checkout@v7
+
+      - name: Check that the release does not exist
+        run: |
+          if git ls-remote --exit-code --tags origin "refs/tags/v$VERSION" > /dev/null; then
+            echo "::error::The tag v$VERSION already exists"
+            exit 1
+          fi
+
+      - uses: erlef/setup-beam@v1
+        with:
+          otp-version: "29.1"
+          rebar3-version: "3.27.1"
+
+      - name: Setup rebar3 hex
+        run: |
+          mkdir -p ~/.config/rebar3/
+          echo "{plugins, [rebar3_hex]}." >> ~/.config/rebar3/rebar.config
+
+      - name: Set the version in the manifest
+        run: |
+          sed -i "s/{vsn, git}/{vsn, \"$VERSION\"}/" src/sqlc.app.src
+          grep -q "{vsn, \"$VERSION\"}" src/sqlc.app.src
+
+      - name: Run unit tests
+        run: rebar3 eunit
+
+      - name: Commit the release
+        id: commit
+        run: |
+          git config user.name "$AUTHOR_NAME"
+          git config user.email "$AUTHOR_EMAIL"
+          git commit --all --message "Release $VERSION"
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Check the Hex package
+        env:
+          HEX_API_KEY: ${{ secrets.HEX_API_KEY }}
+        run: rebar3 hex publish --repo hexpm --dry-run --yes
+
+      - name: Push the release commit
+        run: git push origin HEAD:main
+
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "v$VERSION" \
+            --target "${{ steps.commit.outputs.sha }}" \
+            --title "v$VERSION" \
+            --generate-notes
+
+      - name: Publish to Hex.pm
+        env:
+          HEX_API_KEY: ${{ secrets.HEX_API_KEY }}
+        run: rebar3 hex publish --repo hexpm --yes
+
+      - name: Post release version bump
+        run: |
+          sed -i "s/{vsn, \"$VERSION\"}/{vsn, git}/" src/sqlc.app.src
+          git commit --all --message "Post release version bump"
+          git push origin HEAD:main
