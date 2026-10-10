@@ -107,7 +107,7 @@ jobs:
         run: |
           notes="$(gh release view "v$VERSION" --json body --jq .body)"
           gh release edit "v$VERSION" --notes "- Hex: https://hex.pm/packages/sqlc/$VERSION
-          - HexDocs: https://hexdocs.pm/sqlc/$VERSION
+          - HexDocs: https://sqlc.hexdocs.pm/$VERSION
 
           $notes"
 
