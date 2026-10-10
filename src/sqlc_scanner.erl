@@ -20,7 +20,7 @@
 ))).
 
 -define(is_identifier_start(C), (is_integer(C) andalso (C >= $a andalso C =< $z))).
--define(is_identifier_cont(C), (?is_identifier_start(C) orelse (C =:= $_))).
+-define(is_identifier_cont(C), (?is_identifier_start(C) orelse (C =:= $_) orelse (is_integer(C) andalso (C >= $0 andalso C =< $9)))).
 
 
 -spec string(string()) -> {ok, [token()]} | {error, error_info()}.
@@ -278,7 +278,19 @@ string_test_() ->
             {as, _,"as"},
             {fragment, _, "-- ignored\n            -- ignore quoted '\n            -- ignore quoted \"\n            -- ignore parameter :test\n            select true"},
             {';', _,";"}
-        ]}, string(test_data()))
+        ]}, string(test_data())),
+        ?_assertMatch({ok, [
+            {query, _, "query"},
+            {identifier, _, "test"},
+            {'(', _, "("},
+            {parameter, _, "score_v2"},
+            {identifier, _, "float8"},
+            {'[', _, "["},
+            {']', _, "]"},
+            {')', _, ")"}
+            | _
+        ]}, string("query test(:score_v2 float8[]) as\n  select 1;")),
+        ?_assertMatch({error, _}, string("query 8test() as\n  select 1;"))
     ].
 
 
